@@ -1,9 +1,10 @@
-import { Container, FileManager } from "./file-manager";
+import { Container, FileManager, FilePath } from "./file-manager";
 
 import { Api } from "./api";
 import { Ids } from "./types/index";
 
-const axios = require("axios");
+import axios from "axios";
+
 const HtmlParser = require("node-html-parser");
 
 export class Loader {
@@ -12,36 +13,110 @@ export class Loader {
     private fileManager: FileManager
   ) {}
 
-  private async loadAndReplaceImages(rawHtml: string, container: Container) {
+  private async loadAndReplaceImages(
+    rawHtml: string,
+    container: Container
+  ): Promise<string> {
     const html = HtmlParser.parse(rawHtml);
 
-    const images = html.querySelectorAll("img").map(async (img: any) => {
+    for (const img of html.querySelectorAll("img")) {
       const src = img.getAttribute("data-src") ?? img.getAttribute("src");
+      if (!src) {
+        return;
+      }
+
       const [name] = new URL(src).pathname.match(/([^/]*)\.(\w*)$/);
 
       const image = await axios.get(src, { responseType: "arraybuffer" });
-      const url = await container.storeImage(name, image.data);
+      const url = container.storeImage(name, image.data);
 
       img.setAttribute("src", url);
-    });
-
-    await Promise.all(images);
+    }
 
     return html.toString();
   }
 
-  async downloadArticle(id: Ids.Article, loadImages = true) {
+  private async loadAvatar(
+    url: string,
+    container: Container,
+    cache: Map<string, FilePath>
+  ): Promise<FilePath> {
+    if (url.startsWith("//")) {
+      url = "https:" + url;
+    }
+
+    if (cache.has(url)) {
+      return cache.get(url);
+    }
+
+    const [name] = new URL(url).pathname.match(/([^/]*)\.(\w*)$/);
+    const image = await axios.get(url, { responseType: "arraybuffer" });
+
+    const [extention] = name.match(/\.\w*$/);
+    const filepath = container.storeImage("avatar" + extention, image.data);
+
+    cache.set(url, filepath);
+
+    return filepath;
+  }
+
+  async downloadArticle(
+    id: Ids.Article,
+    options: { loadImages?: boolean; loadComments?: boolean } = {}
+  ) {
+    const defaults = {
+      loadImages: true,
+      loadComments: true,
+    };
+
+    const { loadImages, loadComments } = { ...defaults, ...options };
+
     const container = await this.fileManager.createContainer(id);
     const article = await this.api.article(id);
 
+    const avatarCache = new Map<string, FilePath>();
+
     if (loadImages) {
+      const { author } = article;
+      author.avatarUrl = await this.loadAvatar(
+        author.avatarUrl,
+        container,
+        avatarCache
+      );
+
       article.textHtml = await this.loadAndReplaceImages(
         article.textHtml,
         container
       );
     }
 
-    await container.storeArticle(article);
-    await container.storeFile("index.html", article.textHtml);
+    if (loadComments) {
+      const response = await this.api.comments(id);
+
+      if (loadImages) {
+        for (const comment of Object.values(response.comments)) {
+          comment.message = await this.loadAndReplaceImages(
+            comment.message,
+            container
+          );
+
+          const { author } = comment;
+          if (author.avatarUrl) {
+            author.avatarUrl = await this.loadAvatar(
+              author.avatarUrl,
+              container,
+              avatarCache
+            );
+          }
+        }
+      }
+
+      container.storeFile("comments.json", JSON.stringify(response));
+    }
+
+    container.storeArticle(article);
+    container.storeFile("index.html", article.textHtml);
+
+    await container.save();
   }
 }

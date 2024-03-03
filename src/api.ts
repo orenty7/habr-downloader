@@ -1,6 +1,6 @@
 import { Article, Comments } from "./types/index";
 
-const axios = require("axios");
+import axios from "axios";
 
 export class Api {
   async article(id: string): Promise<Article> {

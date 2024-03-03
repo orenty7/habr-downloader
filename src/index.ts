@@ -19,43 +19,43 @@ async function ensureDirExists(dir: string) {
   }
 }
 
-async function downloadMany(articleIds: Array<string>, parallel = 10) {
-  await ensureDirExists("./articles/");
-  const loader = new Loader(new Api(), new FileManager());
-
+async function downloadMany(
+  loader: Loader,
+  articleIds: Iterable<string>,
+  parallel = 10
+) {
   const queue = async.queue(async (id: string, callback: () => void) => {
     try {
       await loader.downloadArticle(id);
       console.log(`Article #${id}: downloaded`);
     } catch (e) {
-      retry.push(id);
-      console.log(
-        `Article #${id}: download failed, added id to the retry list`
-      );
+      queue.push(id);
+      console.log(e);
+      console.log(`Article #${id}: download failed, adding to retry queue`);
     } finally {
       callback();
     }
   }, parallel);
 
-  const retry: Array<string> = [];
   for (const articleId of articleIds) {
     queue.push(articleId);
   }
 
   await queue.drain();
-
-  await fs.writeFile("./retry.json", JSON.stringify({ retry }));
 }
 
 async function main() {
   const api = new Api();
+  const user = new User("MiraclePtr", api);
+
   const fileManager = new FileManager();
-  // const user = new User("MiraclePtr", api);
   await fileManager.init();
 
   const loader = new Loader(api, fileManager);
 
-  await loader.downloadArticle("796595");
+  const ids = await user.articleIds();
+
+  await downloadMany(loader, ids);
 }
 
 main();

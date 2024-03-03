@@ -21,33 +21,45 @@ export class FileManager {
     private dir: string;
     private counter = 0;
 
+    private files = new Map<string, any>();
+
     constructor(articleId: Ids.Article, parentDir: string) {
       this.dir = path.join(parentDir, articleId);
     }
 
-    async init() {
+    async save() {
       await fs.mkdir(this.dir);
       await fs.mkdir(path.join(this.dir, "images"));
+
+      const promises: Array<Promise<void>> = [];
+      for (const [path, data] of this.files.entries()) {
+        promises.push(fs.writeFile(path, data));
+      }
+
+      await Promise.all(promises);
     }
 
-    async storeArticle(article: Article): Promise<FilePath> {
-      const file = path.join(this.dir, "index.json");
-      await fs.writeFile(file, JSON.stringify(article));
+    storeArticle(article: Article): FilePath {
+      const filepath = path.join(this.dir, "index.json");
 
-      return path.relative(this.dir, file);
+      this.files.set(filepath, JSON.stringify(article));
+
+      return path.relative(this.dir, filepath);
     }
 
-    async storeImage(name: string, data: any): Promise<FilePath> {
+    storeImage(name: string, data: any): FilePath {
       const uniqueName = `${this.counter++}-${name}`;
-      const file = path.join(this.dir, "images", uniqueName);
-      await fs.writeFile(file, data);
+      const filepath = path.join(this.dir, "images", uniqueName);
 
-      return path.relative(this.dir, file);
+      this.files.set(filepath, data);
+
+      return path.relative(this.dir, filepath);
     }
 
-    async storeFile(name: string, data: any): Promise<FilePath> {
+    storeFile(name: string, data: any): FilePath {
       const file = path.join(this.dir, name);
-      await fs.writeFile(file, data);
+
+      this.files.set(file, data);
 
       return path.relative(this.dir, file);
     }
@@ -60,9 +72,6 @@ export class FileManager {
   }
 
   async createContainer(articleId: Ids.Article): Promise<Container> {
-    const container: Container = new FileManager.Container(articleId, this.dir);
-    await container.init();
-
-    return container;
+    return new FileManager.Container(articleId, this.dir);
   }
 }
