@@ -71,7 +71,7 @@ export class FileManager {
     await ensureDirExists(this.dir);
   }
 
-  async createContainer(articleId: Ids.Article): Promise<Container> {
+  createContainer(articleId: Ids.Article): Container {
     return new FileManager.Container(articleId, this.dir);
   }
 }

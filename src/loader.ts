@@ -22,10 +22,10 @@ export class Loader {
     for (const img of html.querySelectorAll("img")) {
       const src = img.getAttribute("data-src") ?? img.getAttribute("src");
       if (!src) {
-        return;
+        continue;
       }
 
-      const [name] = new URL(src).pathname.match(/([^/]*)\.(\w*)$/);
+      const [name] = new URL(src).pathname.match(/[^/]*$/);
 
       const image = await axios.get(src, { responseType: "arraybuffer" });
       const url = container.storeImage(name, image.data);
@@ -71,7 +71,7 @@ export class Loader {
 
     const { loadImages, loadComments } = { ...defaults, ...options };
 
-    const container = await this.fileManager.createContainer(id);
+    const container = this.fileManager.createContainer(id);
     const article = await this.api.article(id);
 
     const avatarCache = new Map<string, FilePath>();
