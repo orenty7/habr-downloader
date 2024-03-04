@@ -74,14 +74,24 @@ async function indexArticles() {
 
 async function main() {
   const api = new Api();
-  const user = new User("MaxRokatansky", api);
+
+  const usernames: Array<string> = ["MiraclePtr", "orenty7"];
+  const users = usernames.map((username) => new User(username, api));
+
+  const groupedIds = await Promise.all(users.map((user) => user.articleIds()));
+
+  const ids: Array<string> = [];
+  for (const userArticleIds of groupedIds) {
+    for (const id of userArticleIds) {
+      ids.push(id);
+    }
+  }
 
   const fileManager = new FileManager();
   await fileManager.init();
 
   const loader = new Loader(api, fileManager);
 
-  const ids = await indexArticles();
   await downloadMany(loader, ids, {
     min: 10,
     max: 20,

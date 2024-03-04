@@ -18,18 +18,13 @@ async function ensureDirExists(dir: string) {
 
 export class FileManager {
   static Container = class {
-    private dir: string;
     private counter = 0;
-
     private files = new Map<string, any>();
 
-    constructor(articleId: Ids.Article, parentDir: string) {
-      this.dir = path.join(parentDir, articleId);
-    }
+    constructor(private dir: string) {}
 
     async save() {
-      await fs.mkdir(this.dir);
-      await fs.mkdir(path.join(this.dir, "images"));
+      await fs.mkdir(path.join(this.dir, "images"), { recursive: true });
 
       const promises: Array<Promise<void>> = [];
       for (const [path, data] of this.files.entries()) {
@@ -71,7 +66,16 @@ export class FileManager {
     await ensureDirExists(this.dir);
   }
 
-  createContainer(articleId: Ids.Article): Container {
-    return new FileManager.Container(articleId, this.dir);
+  createContainer(article: Article): Container {
+    let { id, titleHtml } = article;
+
+    titleHtml = titleHtml.replace(/\//g, "_");
+    if (titleHtml.length > 30) {
+      titleHtml = titleHtml.slice(0, 27) + "...";
+    }
+
+    const name = `${id.padStart(6, "0")} - ${titleHtml}`;
+    const dir = path.join(this.dir, article.author.alias, name);
+    return new FileManager.Container(dir);
   }
 }

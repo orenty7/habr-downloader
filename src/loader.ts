@@ -71,8 +71,8 @@ export class Loader {
 
     const { loadImages, loadComments } = { ...defaults, ...options };
 
-    const container = this.fileManager.createContainer(id);
     const article = await this.api.article(id);
+    const container = this.fileManager.createContainer(article);
 
     const avatarCache = new Map<string, FilePath>();
 
