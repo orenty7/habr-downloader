@@ -78,7 +78,8 @@ export class Loader {
 
     if (loadImages) {
       const { author } = article;
-      author.avatarUrl = await this.loadAvatar(
+
+      author.avatarUrl &&= await this.loadAvatar(
         author.avatarUrl,
         container,
         avatarCache
@@ -101,13 +102,11 @@ export class Loader {
           );
 
           const { author } = comment;
-          if (author.avatarUrl) {
-            author.avatarUrl = await this.loadAvatar(
-              author.avatarUrl,
-              container,
-              avatarCache
-            );
-          }
+          author.avatarUrl &&= await this.loadAvatar(
+            author.avatarUrl,
+            container,
+            avatarCache
+          );
         }
       }
 

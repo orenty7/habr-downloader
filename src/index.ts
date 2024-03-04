@@ -2,22 +2,10 @@ import { Api } from "./api";
 import { User } from "./user";
 import { Loader } from "./loader";
 import { FileManager } from "./file-manager";
+import { Ids } from "./types";
 
 const async = require("async");
 const axios = require("axios");
-const fs = require("fs").promises;
-const HtmlParser = require("node-html-parser");
-
-async function ensureDirExists(dir: string) {
-  try {
-    await fs.access(
-      dir,
-      fs.constants.F_OK | fs.constants.R_OK | fs.constants.W_OK
-    );
-  } catch (e) {
-    await fs.mkdir(dir);
-  }
-}
 
 async function downloadMany(
   loader: Loader,
@@ -61,6 +49,29 @@ async function downloadMany(
   await queue.drain();
 }
 
+async function indexArticles() {
+  const loadPage = (page: number) => {
+    const url = new URL("https://habr.com/kek/v2/articles/");
+    url.searchParams.set("period", "alltime");
+    url.searchParams.set("fl", "ru");
+    url.searchParams.set("hl", "ru");
+    url.searchParams.set("sort", "date");
+    url.searchParams.set("page", page.toString());
+    url.searchParams.set("perPage", "100");
+
+    return axios.get(url.toString()).then((response: any) => response.data);
+  };
+
+  const { pagesCount } = await loadPage(1);
+  const best: Array<Ids.Article> = [];
+  for (let page = 1; page <= pagesCount; page++) {
+    const { publicationIds } = await loadPage(page);
+    best.push(...publicationIds);
+  }
+
+  return new Set(best);
+}
+
 async function main() {
   const api = new Api();
   const user = new User("MaxRokatansky", api);
@@ -70,7 +81,7 @@ async function main() {
 
   const loader = new Loader(api, fileManager);
 
-  const ids = await user.articleIds();
+  const ids = await indexArticles();
   await downloadMany(loader, ids, {
     min: 10,
     max: 20,

@@ -19,9 +19,9 @@ export interface Article {
   author: {
     id: Ids.User;
     alias: string;
-    fullname: "Denis Kryuchkov";
-    avatarUrl: string;
-    speciality: "Publisher";
+    fullname: string | null;
+    avatarUrl: string | null;
+    speciality: "Publisher" | null;
     scoreStats: { score: 564; votesCount: 1558 };
     rating: 0;
     relatedData: {

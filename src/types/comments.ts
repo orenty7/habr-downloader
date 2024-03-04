@@ -18,9 +18,9 @@ export interface Comments {
       author: {
         id: Ids.User;
         alias: string;
-        fullname: string;
-        avatarUrl: string;
-        speciality: "Publisher";
+        fullname: string | null;
+        avatarUrl: string | null;
+        speciality: "Publisher" | null;
       };
       isAuthor: false;
       isPostAuthor: true;
