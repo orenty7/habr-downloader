@@ -40,7 +40,7 @@ export class Loader {
     url: string,
     container: Container,
     cache: Map<string, FilePath>
-  ): Promise<FilePath> {
+  ): Promise<FilePath | undefined> {
     if (url.startsWith("//")) {
       url = "https:" + url;
     }
@@ -50,7 +50,19 @@ export class Loader {
     }
 
     const [name] = new URL(url).pathname.match(/([^/]*)\.(\w*)$/);
-    const image = await axios.get(url, { responseType: "arraybuffer" });
+    const image = await axios
+      .get(url, { responseType: "arraybuffer" })
+      .catch((error) => {
+        if (typeof error === "object" && error?.status === 404) {
+          return undefined;
+        } else {
+          throw error;
+        }
+      });
+
+    if (!image) {
+      return undefined;
+    }
 
     const [extention] = name.match(/\.\w*$/);
     const filepath = container.storeImage("avatar" + extention, image.data);
