@@ -53,7 +53,7 @@ export class Loader {
     const image = await axios
       .get(url, { responseType: "arraybuffer" })
       .catch((error) => {
-        if (typeof error === "object" && error?.status === 404) {
+        if (error?.response?.status === 404) {
           return undefined;
         } else {
           throw error;
